@@ -1,0 +1,15 @@
+{
+  "network": "LitVM LiteForge Testnet",
+  "chainId": "4441",
+  "rpc": "https://liteforge.rpc.caldera.xyz",
+  "explorer": "https://liteforge.explorer.caldera.xyz",
+  "token": "0x187687b0D3e1FCf4Ba08EE027b9cAEba28eb587C",
+  "vault": "0x41FC4FFbe7A7b4201F09Ee68Ec3aC6a18714A2aB",
+  "pools": {
+    "safe": "0x22979bC85C1dD500b83B762D1D9b4c6F023a0FbA",
+    "medium": "0xaFC9a3f7Dbc44D3fE2a25CC7333F712a2226068e",
+    "high": "0x1FBEe9d4590bD9AEfFC56Ea3Ccc5C007c7ad6Cf0"
+  },
+  "developer": "0xEF4c4B6B3c8931D3Ed794Fd4269D5cEfeFa1A1b7",
+  "deployedAt": "2026-04-24T03:40:55.663Z"
+}

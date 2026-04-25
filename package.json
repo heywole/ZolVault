@@ -1,0 +1,16 @@
+{
+  "name": "zolvault",
+  "version": "1.0.0",
+  "scripts": {
+    "deploy": "npx hardhat run deploy.js --network liteforge",
+    "compile": "npx hardhat compile"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0",
+    "ethers": "^6.11.0"
+  }
+}

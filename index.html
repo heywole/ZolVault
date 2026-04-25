@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZolVault — LTC Yield on LitVM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js"></script>
+<style>
+:root {
+  --bg:   #07090c;
+  --bg2:  #0e1118;
+  --bg3:  #151b25;
+  --bg4:  #1c2333;
+  --b:    rgba(255,255,255,0.06);
+  --b2:   rgba(255,255,255,0.11);
+  --txt:  #d8dde8;
+  --mut:  #5c6478;
+  --dim:  #2e3547;
+  --blue: #4a7fd4;
+  --bl2:  #2f5bb8;
+  --bl3:  rgba(74,127,212,0.12);
+  --bl4:  rgba(74,127,212,0.05);
+  --grn:  #2dd4a0;
+  --red:  #f16b6b;
+  --amb:  #f0c060;
+  --f:    'DM Sans', sans-serif;
+  --m:    'DM Mono', monospace;
+  --r:    10px;
+  --r2:   16px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--txt); font-family: var(--f); min-height: 100vh; overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+body::before { content: ''; position: fixed; inset: 0; background: radial-gradient(ellipse 70% 50% at 50% -5%, rgba(47,91,184,0.13), transparent); pointer-events: none; z-index: 0; }
+::-webkit-scrollbar { width: 3px; } ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+/* ── NAV ── */
+nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(7,9,12,0.92); backdrop-filter: blur(18px); border-bottom: 1px solid var(--b); }
+.nav-in { max-width: 1060px; margin: 0 auto; padding: 0 16px; height: 56px; display: flex; align-items: center; justify-content: space-between; }
+.logo { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.logo-m { width: 28px; height: 28px; border-radius: 7px; background: var(--bl2); display: grid; place-items: center; font: 600 12px var(--m); color: #fff; flex-shrink: 0; }
+.logo-t { font-size: 16px; font-weight: 600; color: #fff; letter-spacing: -.02em; }
+.logo-t em { font-style: normal; color: var(--blue); }
+.nav-links { display: flex; align-items: center; gap: 2px; }
+.nl { padding: 6px 11px; border-radius: 8px; font: 500 13px var(--f); color: var(--mut); background: none; border: none; cursor: pointer; transition: all .15s; }
+.nl:hover, .nl.on { color: var(--txt); background: var(--bg3); }
+.nl.on { color: var(--blue); }
+.wb { padding: 7px 14px; border-radius: 8px; background: var(--bl2); color: #fff; font: 600 13px var(--f); border: none; cursor: pointer; transition: all .2s; }
+.wb:hover { background: #2752a8; }
+.wb.ok { background: rgba(45,212,160,0.09); color: var(--grn); border: 1px solid rgba(45,212,160,0.25); }
+.burger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+.burger span { display: block; width: 20px; height: 2px; background: var(--txt); border-radius: 1px; }
+.drawer { display: none; position: fixed; inset: 56px 0 0 0; background: var(--bg); z-index: 99; padding: 14px; transform: translateX(-100%); transition: transform .26s ease; }
+.drawer.open { transform: translateX(0); }
+.dl { display: block; width: 100%; padding: 13px 14px; border-radius: var(--r); font: 500 14px var(--f); color: var(--mut); background: none; border: none; cursor: pointer; text-align: left; margin-bottom: 4px; transition: all .15s; }
+.dl:hover, .dl.on { color: var(--txt); background: var(--bg3); }
+.dl.on { color: var(--blue); }
+.d-wb { width: 100%; padding: 13px; border-radius: var(--r); background: var(--bl2); color: #fff; font: 600 14px var(--f); border: none; cursor: pointer; margin-top: 8px; }
+
+/* ── PAGES ── */
+.page { display: none; padding-top: 56px; min-height: 100vh; }
+.page.on { display: block; }
+.wrap { max-width: 1060px; margin: 0 auto; padding: 0 16px; }
+
+/* ── HOME ── */
+.hero { padding: 60px 0 44px; text-align: center; }
+.pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 13px; border-radius: 20px; border: 1px solid var(--b2); background: var(--bg3); font: 11px var(--m); color: var(--mut); margin-bottom: 22px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--grn); animation: blink 2s infinite; }
+@keyframes blink { 0%,100% { opacity:1; box-shadow: 0 0 5px var(--grn); } 50% { opacity:.4; box-shadow: none; } }
+.hero h1 { font-size: clamp(28px,5.5vw,52px); font-weight: 600; line-height: 1.09; letter-spacing: -.03em; margin-bottom: 14px; color: #fff; }
+.hero h1 em { font-style: normal; color: var(--blue); }
+.hero-sub { font-size: clamp(14px,2vw,16px); color: var(--mut); max-width: 460px; margin: 0 auto 30px; line-height: 1.65; }
+.hero-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+.btn { padding: 12px 26px; background: var(--bl2); color: #fff; border: none; border-radius: var(--r); font: 600 14px var(--f); cursor: pointer; transition: all .2s; }
+.btn:hover { background: #2752a8; transform: translateY(-1px); }
+.btn:active { transform: scale(.99); }
+.btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+.btn-g { padding: 12px 26px; background: var(--bg3); color: var(--txt); border: 1px solid var(--b2); border-radius: var(--r); font: 500 14px var(--f); cursor: pointer; transition: all .2s; }
+.btn-g:hover { border-color: var(--blue); color: var(--blue); }
+
+/* ── STATS BAR ── */
+.sbar { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--b); border: 1px solid var(--b); border-radius: var(--r2); overflow: hidden; margin-bottom: 48px; }
+.sc { background: var(--bg2); padding: 18px 20px; position: relative; }
+.sc::after { content: ''; position: absolute; top: 12px; right: 12px; width: 5px; height: 5px; border-radius: 50%; background: var(--grn); animation: blink 3s infinite; }
+.sl { font: 10px var(--m); color: var(--mut); letter-spacing: .08em; text-transform: uppercase; margin-bottom: 7px; }
+.sv { font: 600 20px var(--m); color: #fff; letter-spacing: -.02em; }
+.sv.g { color: var(--grn); } .sv.b { color: var(--blue); }
+.ss { font: 11px var(--m); color: var(--dim); margin-top: 3px; }
+
+/* ── NETWORK BAR ── */
+.netbar { display: flex; align-items: center; gap: 14px; padding: 9px 14px; background: var(--bg3); border: 1px solid var(--b); border-radius: var(--r); margin-bottom: 12px; flex-wrap: wrap; font: 11px var(--m); color: var(--mut); }
+.netbar a { color: var(--blue); text-decoration: none; }
+.netbar a:hover { text-decoration: underline; }
+.ndot { width: 5px; height: 5px; border-radius: 50%; background: var(--grn); animation: blink 2s infinite; flex-shrink: 0; }
+
+/* ── HOW IT WORKS ── */
+.sec { text-align: center; margin-bottom: 32px; }
+.sec-eye { font: 10px var(--m); color: var(--blue); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 9px; }
+.sec h2 { font-size: clamp(20px,3.5vw,30px); font-weight: 600; letter-spacing: -.02em; color: #fff; }
+.sec p { font-size: 14px; color: var(--mut); margin-top: 8px; max-width: 420px; margin-left: auto; margin-right: auto; line-height: 1.65; }
+.steps { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 48px; }
+.step { background: var(--bg2); border: 1px solid var(--b); border-radius: var(--r2); padding: 20px; position: relative; overflow: hidden; }
+.step::before { content: attr(data-n); position: absolute; top: 12px; right: 16px; font: 700 40px var(--m); color: var(--b); line-height: 1; }
+.step-i { width: 36px; height: 36px; border-radius: 9px; background: var(--bl3); display: grid; place-items: center; font-size: 18px; margin-bottom: 12px; }
+.step h3 { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: #fff; }
+.step p { font-size: 13px; color: var(--mut); line-height: 1.65; }
+
+/* ── FEE BOX ── */
+.fee-box { background: var(--bg2); border: 1px solid var(--b); border-radius: var(--r2); padding: 24px; margin-bottom: 48px; }
+.fee-box h3 { font-size: 17px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.fee-box .sub { font-size: 13px; color: var(--mut); margin-bottom: 18px; }
+.fee-flow { display: flex; align-items: center; background: var(--bg3); border-radius: var(--r); padding: 16px; overflow-x: auto; gap: 4px; flex-wrap: wrap; }
+.fb { text-align: center; padding: 8px 14px; min-width: 80px; }
+.fa { font: 600 15px var(--m); margin-bottom: 3px; }
+.fl { font: 10px var(--m); color: var(--mut); }
+.farr { color: var(--dim); font-size: 16px; padding: 0 2px; }
+.fee-note { margin-top: 12px; padding: 10px 14px; background: rgba(45,212,160,0.05); border: 1px solid rgba(45,212,160,0.13); border-radius: var(--r); font: 12px var(--m); color: var(--grn); }
+
+/* ── POOL ROWS ── */
+.pr { display: flex; align-items: center; padding: 13px 17px; border-bottom: 1px solid var(--b); gap: 12px; }
+.pr:last-child { border-bottom: none; }
+.pdot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pi { flex: 1; min-width: 0; }
+.pn { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 2px; }
+.pp { font: 11px var(--m); color: var(--mut); }
+.pt { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.papy { font: 600 16px var(--m); flex-shrink: 0; }
+.papy.hi { color: var(--grn); } .papy.mi { color: var(--amb); } .papy.lo { color: var(--mut); }
+.pill2 { display: inline-block; padding: 2px 7px; border-radius: 4px; font: 600 9px var(--m); }
+.p0 { background: rgba(74,127,212,0.1); color: var(--blue); }
+.p1 { background: rgba(240,192,96,0.1); color: var(--amb); }
+.p2 { background: rgba(241,107,107,0.1); color: var(--red); }
+.atag { font: 9px var(--m); padding: 1px 6px; border-radius: 3px; background: rgba(45,212,160,0.1); color: var(--grn); margin-left: 5px; }
+.txl { font: 10px var(--m); color: var(--blue); text-decoration: none; }
+.txl:hover { text-decoration: underline; }
+
+/* ── VAULT PAGE ── */
+.vault-grid { display: grid; grid-template-columns: 1fr 310px; gap: 14px; padding: 20px 0 40px; align-items: start; }
+.card { background: var(--bg2); border: 1px solid var(--b); border-radius: var(--r2); overflow: hidden; }
+.ch { padding: 13px 17px; border-bottom: 1px solid var(--b); display: flex; align-items: center; justify-content: space-between; }
+.ct { font: 600 10px var(--m); letter-spacing: .08em; text-transform: uppercase; color: var(--mut); }
+.cb { padding: 17px; }
+.vtabs { display: flex; border-bottom: 1px solid var(--b); }
+.vtab { padding: 12px 14px; font: 500 13px var(--f); color: var(--mut); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all .15s; margin-bottom: -1px; }
+.vtab.on { color: var(--blue); border-bottom-color: var(--blue); }
+
+/* ── DEPOSIT FORM ── */
+.af { background: var(--bg3); border: 1px solid var(--b2); border-radius: var(--r); padding: 13px; margin-bottom: 12px; }
+.af label { display: block; font: 10px var(--m); color: var(--mut); letter-spacing: .06em; margin-bottom: 7px; }
+.ar { display: flex; align-items: center; gap: 9px; }
+.ai { flex: 1; background: none; border: none; outline: none; font: 600 24px var(--m); color: #fff; min-width: 0; }
+.ai::placeholder { color: var(--dim); }
+.cur { font: 600 12px var(--m); color: var(--blue); flex-shrink: 0; }
+.mx { padding: 4px 9px; background: var(--bl3); color: var(--blue); border: none; border-radius: 6px; font: 600 11px var(--m); cursor: pointer; }
+.bh { font: 11px var(--m); color: var(--mut); margin-top: 6px; }
+.rl { font: 10px var(--m); color: var(--mut); letter-spacing: .06em; margin-bottom: 8px; }
+.rg { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin-bottom: 12px; }
+.ro { padding: 12px 8px; border: 1px solid var(--b); border-radius: var(--r); cursor: pointer; text-align: center; transition: all .15s; background: var(--bg3); }
+.ro.r0 { border-color: var(--blue); background: var(--bl4); }
+.ro.r1 { border-color: var(--amb); background: rgba(240,192,96,0.05); }
+.ro.r2 { border-color: var(--red); background: rgba(241,107,107,0.05); }
+.rn { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
+.ra { font: 10px var(--m); color: var(--mut); }
+.rd { padding: 10px 13px; background: var(--bg3); border: 1px solid var(--b); border-radius: var(--r); font-size: 12px; color: var(--mut); line-height: 1.65; margin-bottom: 12px; }
+.rd strong { color: var(--txt); }
+.db { width: 100%; padding: 13px; background: var(--bl2); color: #fff; border: none; border-radius: var(--r); font: 600 14px var(--f); cursor: pointer; transition: all .2s; margin-bottom: 10px; }
+.db:hover { background: #2752a8; }
+.db:disabled { opacity: .4; cursor: not-allowed; }
+.lock { display: flex; align-items: flex-start; gap: 9px; padding: 10px 13px; background: rgba(45,212,160,0.04); border: 1px solid rgba(45,212,160,0.1); border-radius: var(--r); }
+.lt { font-size: 11px; color: var(--grn); line-height: 1.6; }
+
+/* ── FAUCET SECTION ── */
+.faucet-box { background: var(--bg3); border: 1px solid var(--b2); border-radius: var(--r); padding: 14px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.faucet-info { flex: 1; min-width: 200px; }
+.faucet-info h4 { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 3px; }
+.faucet-info p { font-size: 12px; color: var(--mut); line-height: 1.5; }
+.faucet-btn { padding: 9px 16px; background: var(--bl2); color: #fff; border: none; border-radius: var(--r); font: 600 13px var(--f); cursor: pointer; transition: all .2s; flex-shrink: 0; }
+.faucet-btn:hover { background: #2752a8; }
+.faucet-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── POSITIONS ── */
+.empty { text-align: center; padding: 32px 16px; }
+.empty-i { font-size: 32px; margin-bottom: 10px; }
+.empty-t { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 5px; }
+.empty-s { font-size: 12px; color: var(--mut); line-height: 1.6; }
+.pos { background: var(--bg3); border: 1px solid var(--b); border-radius: var(--r); padding: 14px; margin-bottom: 9px; }
+.pos-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.pos-amt { font: 600 18px var(--m); color: #fff; }
+.pos-meta { font: 10px var(--m); color: var(--mut); margin-top: 2px; }
+.pos-g { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.pst { background: var(--bg); border-radius: 7px; padding: 8px 10px; }
+.psl { font: 10px var(--m); color: var(--dim); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.psv { font: 600 12px var(--m); }
+.bd { background: var(--bg); border-radius: 7px; padding: 10px; font: 10px var(--m); line-height: 2; margin-bottom: 10px; }
+.br { display: flex; justify-content: space-between; }
+.pbs { display: flex; gap: 6px; }
+.pb { flex: 1; padding: 8px; border-radius: 8px; font: 600 11px var(--f); cursor: pointer; border: 1px solid var(--b); background: var(--bg); color: var(--txt); transition: all .15s; }
+.pb:hover { background: var(--bg3); }
+.pb:disabled { opacity: .4; cursor: not-allowed; }
+.pb.g { color: var(--grn); border-color: rgba(45,212,160,0.18); }
+.pb.r { color: var(--red); border-color: rgba(241,107,107,0.18); }
+
+/* ── AGENT ── */
+.agc { background: var(--bg2); border: 1px solid var(--b); border-radius: var(--r2); overflow: hidden; margin-bottom: 12px; }
+.agh { padding: 12px 16px; border-bottom: 1px solid var(--b); display: flex; align-items: center; gap: 10px; }
+.ag-i { width: 32px; height: 32px; border-radius: 8px; background: var(--bl3); display: grid; place-items: center; font-size: 16px; flex-shrink: 0; }
+.ag-info { flex: 1; }
+.ag-n { font-size: 13px; font-weight: 600; color: #fff; }
+.ag-s { font: 10px var(--m); color: var(--mut); }
+.ag-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--dim); flex-shrink: 0; transition: all .3s; }
+.ag-dot.on { background: var(--grn); box-shadow: 0 0 7px rgba(45,212,160,0.5); animation: blink 2s infinite; }
+.agb { padding: 13px 16px; }
+.agsg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 10px; }
+.agst { background: var(--bg3); border-radius: 7px; padding: 8px 10px; }
+.agsl { font: 10px var(--m); color: var(--mut); margin-bottom: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.agsv { font: 600 14px var(--m); color: #fff; }
+.agsv.b { color: var(--blue); } .agsv.g { color: var(--grn); }
+.ag-t { width: 100%; padding: 10px; border-radius: var(--r); background: var(--bl2); color: #fff; border: none; font: 600 13px var(--f); cursor: pointer; transition: all .2s; margin-bottom: 9px; }
+.ag-t:hover { background: #2752a8; }
+.ag-t.stop { background: rgba(241,107,107,0.1); color: var(--red); border: 1px solid rgba(241,107,107,0.18); }
+.logbox { background: var(--bg); border-radius: 8px; padding: 9px; height: 155px; overflow-y: auto; font: 10px var(--m); line-height: 1.9; }
+.ll { color: var(--mut); }
+.ll.ok { color: var(--grn); } .ll.info { color: var(--blue); } .ll.warn { color: var(--amb); } .ll.err { color: var(--red); }
+
+/* ── YIELD PANEL ── */
+.yb { background: var(--bg2); border: 1px solid var(--b); border-radius: var(--r2); overflow: hidden; }
+.ybr { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--b); font-size: 12px; }
+.ybr:last-child { border-bottom: none; }
+.ybl { color: var(--mut); }
+.ybv { font: 500 12px var(--m); }
+.ybv.g { color: var(--grn); } .ybv.a { color: var(--amb); } .ybv.w { font-size: 14px; color: #fff; }
+
+/* ── WALLET MODAL ── */
+.ov { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 150; align-items: flex-end; justify-content: center; }
+.ov.open { display: flex; }
+@media(min-width:580px){ .ov { align-items: center; } }
+.modal { background: var(--bg2); border: 1px solid var(--b2); border-radius: var(--r2) var(--r2) 0 0; padding: 22px; width: 100%; max-width: 380px; }
+@media(min-width:580px){ .modal { border-radius: var(--r2); } }
+.mbar { width: 32px; height: 3px; border-radius: 2px; background: var(--b2); margin: 0 auto 16px; }
+.modal h3 { font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 5px; }
+.modal-sub { font-size: 12px; color: var(--mut); margin-bottom: 16px; line-height: 1.6; }
+.wo { display: flex; align-items: center; gap: 11px; padding: 12px; background: var(--bg3); border: 1px solid var(--b); border-radius: var(--r); cursor: pointer; margin-bottom: 8px; transition: border-color .15s; }
+.wo:hover { border-color: var(--b2); }
+.wi { width: 34px; height: 34px; border-radius: 8px; background: var(--bg); display: grid; place-items: center; font-size: 18px; flex-shrink: 0; }
+.wn { font-size: 13px; font-weight: 600; color: #fff; margin-bottom: 1px; }
+.wd { font-size: 11px; color: var(--mut); }
+.mcan { width: 100%; padding: 11px; background: none; border: 1px solid var(--b); border-radius: var(--r); color: var(--mut); font: 13px var(--f); cursor: pointer; margin-top: 2px; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%) translateY(60px); padding: 10px 16px; background: var(--bg3); border: 1px solid var(--b2); border-radius: 9px; font: 12px var(--m); color: var(--txt); z-index: 200; opacity: 0; transition: all .28s; white-space: nowrap; max-width: calc(100vw - 28px); text-align: center; }
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+.toast.ok  { border-color: rgba(45,212,160,0.3); color: var(--grn); }
+.toast.err { border-color: rgba(241,107,107,0.3); color: var(--red); }
+
+/* ── RESPONSIVE ── */
+@media(max-width:860px){ .vault-grid { grid-template-columns: 1fr; } }
+@media(max-width:640px){
+  .nav-links { display: none; } .burger { display: flex; } .drawer { display: block; }
+  .sbar { grid-template-columns: 1fr 1fr; } .sc { padding: 14px; } .sv { font-size: 17px; }
+  .steps { grid-template-columns: 1fr; } .rg { grid-template-columns: 1fr; }
+  .hero-btns { flex-direction: column; align-items: stretch; }
+}
+@media(max-width:380px){ .sbar { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<!-- ── WALLET MODAL ── -->
+<div class="ov" id="ov" onclick="if(event.target.id==='ov')closeModal()">
+  <div class="modal">
+    <div class="mbar"></div>
+    <h3>Connect wallet</h3>
+    <p class="modal-sub">
+      Connecting to <strong style="color:var(--blue)">LitVM LiteForge Testnet</strong><br>
+      No zkLTC yet? We have a built-in faucet in the Vault tab.
+    </p>
+    <div class="wo" onclick="connectWallet()">
+      <div class="wi">🦊</div>
+      <div><div class="wn">MetaMask</div><div class="wd">Browser extension wallet</div></div>
+    </div>
+    <div class="wo" onclick="connectWallet()">
+      <div class="wi">🐰</div>
+      <div><div class="wn">Rabby Wallet</div><div class="wd">Great alternative for LitVM</div></div>
+    </div>
+    <button class="mcan" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-in">
+    <div class="logo" onclick="goto('home')">
+      <div class="logo-m">ZV</div>
+      <div class="logo-t">Zol<em>Vault</em></div>
+    </div>
+    <div class="nav-links">
+      <button class="nl on" id="nl-home"  onclick="goto('home')">Home</button>
+      <button class="nl"    id="nl-vault" onclick="goto('vault')">Vault</button>
+      <button class="nl"    id="nl-pools" onclick="goto('pools')">Pools</button>
+      <button class="nl"    id="nl-learn" onclick="goto('learn')">Learn</button>
+      <button class="wb" id="wbtn" onclick="openModal()">Connect wallet</button>
+    </div>
+    <button class="burger" onclick="toggleD()"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+<div class="drawer" id="drawer">
+  <button class="dl on" id="dl-home"  onclick="goto('home');closeD()">Home</button>
+  <button class="dl"    id="dl-vault" onclick="goto('vault');closeD()">Vault</button>
+  <button class="dl"    id="dl-pools" onclick="goto('pools');closeD()">Pools</button>
+  <button class="dl"    id="dl-learn" onclick="goto('learn');closeD()">Learn</button>
+  <button class="d-wb" onclick="openModal();closeD()">Connect wallet</button>
+</div>
+
+<!-- ══════════════ HOME ══════════════ -->
+<div class="page on" id="page-home">
+<div class="wrap">
+  <section class="hero">
+    <div class="pill"><span class="dot"></span>LitVM LiteForge Testnet — Live</div>
+    <h1>Your LTC earning<br><em>on autopilot</em></h1>
+    <p class="hero-sub">Deposit zkLTC, pick a risk level, and our agent compounds your yield every hour — automatically, on-chain, on LitVM.</p>
+    <div class="hero-btns">
+      <button class="btn" onclick="goto('vault')">Start earning →</button>
+      <button class="btn-g" onclick="goto('learn')">How it works</button>
+    </div>
+  </section>
+
+  <!-- Real-time chain data -->
+  <div class="netbar" id="netbar">
+    <span class="ndot"></span>
+    <span>LiteForge Testnet</span>
+    <span>Block: <strong id="nb-blk" style="color:var(--txt)">—</strong></span>
+    <span>Gas: <strong id="nb-gas" style="color:var(--txt)">—</strong></span>
+    <a href="https://liteforge.explorer.caldera.xyz" target="_blank" rel="noopener">Explorer ↗</a>
+    <a href="https://liteforge.hub.caldera.xyz" target="_blank" rel="noopener">Faucet ↗</a>
+  </div>
+
+  <div class="sbar">
+    <div class="sc"><div class="sl">Vault TVL</div><div class="sv b" id="h-tvl">—</div><div class="ss">zkLTC deposited</div></div>
+    <div class="sc"><div class="sl">Best APY</div><div class="sv g" id="h-apy">—</div><div class="ss" id="h-apy-n">scanning...</div></div>
+    <div class="sc"><div class="sl">Compounds</div><div class="sv" id="h-comp">—</div><div class="ss">on-chain txns</div></div>
+    <div class="sc"><div class="sl">Dev fees (2%)</div><div class="sv b" id="h-dev">—</div><div class="ss">yield only</div></div>
+  </div>
+
+  <div class="sec"><div class="sec-eye">How it works</div><h2>Three steps. Then nothing.</h2><p>You deposit once. The agent does everything else.</p></div>
+  <div class="steps">
+    <div class="step" data-n="1">
+      <div class="step-i">💰</div>
+      <h3>Get test tokens & deposit</h3>
+      <p>Connect MetaMask, claim free zkLTC from our built-in faucet, pick a risk level, and deposit. Your deposit is recorded exactly — fees never touch it.</p>
+    </div>
+    <div class="step" data-n="2">
+      <div class="step-i">⚡</div>
+      <h3>Agent works 24/7</h3>
+      <p>An autonomous script monitors all pools on LiteForge. When it finds a better yield (3%+ improvement), it rotates your allocation automatically.</p>
+    </div>
+    <div class="step" data-n="3">
+      <div class="step-i">📈</div>
+      <h3>Yield compounds</h3>
+      <p>Every compound cycle, earnings are harvested and reinvested on-chain. Withdraw any time — your original deposit always returns 100%.</p>
+    </div>
+  </div>
+
+  <div class="fee-box">
+    <h3>Fees — only on profit, never on your deposit</h3>
+    <p class="sub">Hardcoded in Solidity. The contract is mathematically unable to touch your deposited principal.</p>
+    <div class="fee-flow">
+      <div class="fb"><div class="fa" style="color:var(--blue)">Gross yield</div><div class="fl">what pools earn</div></div>
+      <div class="farr">→</div>
+      <div class="fb"><div class="fa" style="color:var(--amb)">−2%</div><div class="fl">dev fee</div></div>
+      <div class="farr">→</div>
+      <div class="fb"><div class="fa" style="color:var(--grn)">98%</div><div class="fl">you keep</div></div>
+    </div>
+    <div class="fee-note">✓ Your deposit = zero fees. Returned 100% when you withdraw. Always.</div>
+  </div>
+
+  <div class="sec"><div class="sec-eye">The pools</div><h2>First DeFi pools on LitVM</h2><p>ZolVault deployed the first yield contracts on LiteForge testnet.</p></div>
+  <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r2);overflow:hidden;margin-bottom:48px;" id="home-pools">
+    <div style="padding:20px;text-align:center;color:var(--mut);font-size:13px;">Loading live data from chain...</div>
+  </div>
+  <div style="text-align:center;margin-bottom:52px;"><button class="btn" onclick="goto('vault')">Deposit now →</button></div>
+</div>
+</div>
+
+<!-- ══════════════ VAULT ══════════════ -->
+<div class="page" id="page-vault">
+<div class="wrap">
+
+  <!-- Must connect first -->
+  <div id="v-gate" style="display:none;">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 20px;text-align:center;">
+      <div style="font-size:40px;margin-bottom:16px;">🔐</div>
+      <h2 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:8px;">Connect your wallet to use the vault</h2>
+      <p style="font-size:14px;color:var(--mut);max-width:360px;line-height:1.65;margin-bottom:24px;">You need MetaMask or Rabby Wallet connected to LiteForge testnet. Then use our built-in faucet to get free test tokens.</p>
+      <button class="btn" onclick="openModal()">Connect wallet</button>
+    </div>
+  </div>
+
+  <!-- Vault UI -->
+  <div id="v-ui" style="display:none;">
+    <div style="padding:20px 0 12px;">
+      <div style="font:10px var(--m);color:var(--mut);margin-bottom:5px;letter-spacing:.06em;">YOUR PORTFOLIO</div>
+      <div style="display:flex;align-items:baseline;gap:13px;flex-wrap:wrap;">
+        <div style="font:600 24px var(--m);color:#fff;" id="v-total">0.0000 zkLTC</div>
+        <div style="font:12px var(--m);color:var(--grn);" id="v-earned">+0.000000 earned</div>
+      </div>
+      <div style="font:11px var(--m);color:var(--mut);margin-top:4px;" id="v-addr"></div>
+    </div>
+
+    <div class="vtabs">
+      <button class="vtab on" id="vt-d" onclick="vtab('d')">Deposit</button>
+      <button class="vtab"    id="vt-p" onclick="vtab('p')">My position <span id="pbadge" style="background:var(--bl3);color:var(--blue);font:10px var(--m);padding:1px 6px;border-radius:4px;margin-left:4px;">—</span></button>
+    </div>
+
+    <div class="vault-grid">
+      <div>
+
+        <!-- DEPOSIT TAB -->
+        <div id="vp-d">
+          <div class="card" style="margin-bottom:10px;">
+            <div class="ch"><span class="ct">Get test tokens</span></div>
+            <div class="cb">
+              <div class="faucet-box">
+                <div class="faucet-info">
+                  <h4>Claim free zkLTC</h4>
+                  <p>Claim 1000 free test zkLTC to your wallet. One claim per wallet. These are test tokens — no real value.</p>
+                </div>
+                <button class="faucet-btn" id="faucet-btn" onclick="claimFaucet()">Claim 1000 zkLTC</button>
+              </div>
+              <div style="font:11px var(--m);color:var(--mut);">Or get more from the official faucet: <a href="https://liteforge.hub.caldera.xyz" target="_blank" style="color:var(--blue)">liteforge.hub.caldera.xyz</a></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="ch"><span class="ct">Deposit zkLTC</span><span style="font:11px var(--m);color:var(--mut);">Min: 0.001 zkLTC</span></div>
+            <div class="cb">
+              <div class="af">
+                <label>AMOUNT</label>
+                <div class="ar">
+                  <input class="ai" type="number" id="dep-in" placeholder="0.000" min="0.001" step="0.001">
+                  <span class="cur">zkLTC</span>
+                  <button class="mx" onclick="setMax()">MAX</button>
+                </div>
+                <div class="bh" id="bh">Balance: — (connect wallet)</div>
+              </div>
+
+              <div class="rl">SELECT RISK LEVEL</div>
+              <div class="rg">
+                <div class="ro r0" id="ro-0" onclick="pickRisk(0)">
+                  <div class="rn" style="color:var(--blue)">Safe</div>
+                  <div class="ra" id="apy0">8% APY</div>
+                </div>
+                <div class="ro" id="ro-1" onclick="pickRisk(1)">
+                  <div class="rn" style="color:var(--amb)">Medium</div>
+                  <div class="ra" id="apy1">15% APY</div>
+                </div>
+                <div class="ro" id="ro-2" onclick="pickRisk(2)">
+                  <div class="rn" style="color:var(--red)">High</div>
+                  <div class="ra" id="apy2">35% APY</div>
+                </div>
+              </div>
+              <div class="rd" id="rd">
+                <strong>Safe</strong> — zkLTC Stability Pool. Lowest APY, lowest risk. Best for steady, boring gains.
+              </div>
+
+              <button class="db" id="dep-btn" onclick="doDeposit()">Deposit zkLTC</button>
+              <div class="lock">
+                <span style="font-size:14px;flex-shrink:0;">🔒</span>
+                <span class="lt">Your deposit is <strong>always returned 100%</strong> on withdrawal. The 2% fee applies only to yield profit — never to your original deposit. Emergency exit always available.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- POSITION TAB -->
+        <div id="vp-p" style="display:none;">
+          <div class="card">
+            <div class="ch"><span class="ct">My position</span><span style="font:11px var(--m);color:var(--mut);" id="pos-hd">loading...</span></div>
+            <div class="cb" id="pos-body">
+              <div style="text-align:center;padding:20px;color:var(--mut);font-size:13px;">Reading your position from chain...</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Agent + Yield breakdown -->
+      <div>
+        <div class="agc">
+          <div class="agh">
+            <div class="ag-i">⚡</div>
+            <div class="ag-info">
+              <div class="ag-n" id="ag-n">Agent idle</div>
+              <div class="ag-s" id="ag-s">Start to begin compounding</div>
+            </div>
+            <div class="ag-dot" id="ag-dot"></div>
+          </div>
+          <div class="agb">
+            <div class="agsg">
+              <div class="agst"><div class="agsl">Compounds</div><div class="agsv" id="ag-c">0</div></div>
+              <div class="agst"><div class="agsl">Rotations</div><div class="agsv b" id="ag-r">0</div></div>
+              <div class="agst"><div class="agsl">Best pool</div><div class="agsv" style="font-size:10px;color:var(--mut);" id="ag-bp">—</div></div>
+              <div class="agst"><div class="agsl">Net yield</div><div class="agsv g" id="ag-y">0.000</div></div>
+            </div>
+            <button class="ag-t" id="ag-btn" onclick="toggleAgent()">Start agent</button>
+            <div style="font:10px var(--m);color:var(--mut);margin-bottom:7px;letter-spacing:.04em;">LIVE LOG — real transaction hashes</div>
+            <div class="logbox" id="logbox"></div>
+          </div>
+        </div>
+
+        <div class="yb">
+          <div class="ch"><span class="ct">Yield breakdown</span></div>
+          <div class="ybr"><span class="ybl">Your deposit (principal)</span><span class="ybv w" id="yb-p">—</span></div>
+          <div class="ybr"><span class="ybl">Gross yield earned</span><span class="ybv" id="yb-g">—</span></div>
+          <div class="ybr"><span class="ybl">Dev fee (2% of yield)</span><span class="ybv a" id="yb-d">—</span></div>
+          <div class="ybr" style="border-top:1px solid var(--b2);">
+            <span class="ybl" style="color:var(--txt);font-weight:500;">Your net yield (98%)</span>
+            <span class="ybv g" id="yb-n">—</span>
+          </div>
+          <div class="ybr">
+            <span class="ybl" style="color:var(--txt);">Total if you withdraw now</span>
+            <span class="ybv w" id="yb-t">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ POOLS ══════════════ -->
+<div class="page" id="page-pools">
+<div class="wrap">
+  <div style="padding:22px 0 14px;">
+    <div style="font-size:21px;font-weight:600;color:#fff;margin-bottom:5px;">ZolVault Pools</div>
+    <div style="font-size:13px;color:var(--mut);">The first yield contracts deployed on LitVM LiteForge testnet. APYs are read live from the blockchain.</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 290px;gap:14px;padding-bottom:40px;align-items:start;" id="pools-layout">
+    <div class="card">
+      <div class="ch"><span class="ct">All pools</span><span style="font:11px var(--m);color:var(--mut);" id="pools-ts">—</span></div>
+      <div id="pool-table"><div style="padding:20px;text-align:center;color:var(--mut);font-size:13px;">Loading from chain...</div></div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="ch"><span class="ct">Active per risk level</span></div>
+        <div class="cb" id="active-tiers"><div style="font-size:12px;color:var(--mut);">Start the agent to see which pool is active.</div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><span class="ct">Why our own pools?</span></div>
+        <div class="cb" style="font-size:12px;color:var(--mut);line-height:1.75;">
+          <p style="margin-bottom:9px;">LiteForge testnet launched April 2026. There are <strong style="color:var(--txt)">no third-party DEX pools</strong> on LitVM yet — we are the first.</p>
+          <p style="margin-bottom:9px;">These pools simulate real yield using APY × time × your principal, paid from a reserve. On mainnet they will be replaced by real LitSwap pools.</p>
+          <a href="https://liteforge.explorer.caldera.xyz" target="_blank" rel="noopener" class="txl">View contracts on explorer ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ══════════════ LEARN ══════════════ -->
+<div class="page" id="page-learn">
+<div class="wrap" style="padding:20px 0 48px;">
+  <div style="display:grid;grid-template-columns:200px 1fr;gap:20px;align-items:start;" id="learn-layout">
+    <div style="background:var(--bg2);border:1px solid var(--b);border-radius:var(--r2);padding:8px;position:sticky;top:68px;" id="lnav">
+      <button class="nl on" style="display:block;width:100%;text-align:left;padding:8px 11px;border-radius:7px;margin-bottom:2px;" onclick="lscroll('what',this)">What is ZolVault?</button>
+      <button class="nl" style="display:block;width:100%;text-align:left;padding:8px 11px;border-radius:7px;margin-bottom:2px;" onclick="lscroll('ltc',this)">LTC &amp; LitVM</button>
+      <button class="nl" style="display:block;width:100%;text-align:left;padding:8px 11px;border-radius:7px;margin-bottom:2px;" onclick="lscroll('yield',this)">How yield works</button>
+      <button class="nl" style="display:block;width:100%;text-align:left;padding:8px 11px;border-radius:7px;margin-bottom:2px;" onclick="lscroll('fees',this)">Fee breakdown</button>
+      <button class="nl" style="display:block;width:100%;text-align:left;padding:8px 11px;border-radius:7px;margin-bottom:2px;" onclick="lscroll('safe',this)">Is it safe?</button>
+      <button class="nl" style="display:block;width:100%;text-align:left;padding:8px 11px;border-radius:7px;margin-bottom:2px;" onclick="lscroll('faq',this)">FAQ</button>
+    </div>
+    <div>
+      <div style="margin-bottom:36px;" id="ls-what">
+        <h2 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:-.02em;">What is ZolVault?</h2>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;">ZolVault is a <strong style="color:var(--txt)">yield vault</strong> — like a savings account that automatically finds the best interest rate, moves your money there, and reinvests your earnings, all without you doing anything after depositing.</p>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;">You deposit zkLTC. An autonomous agent places it into yield pools, harvests the interest every hour, and reinvests it. Your LTC balance grows automatically through compounding.</p>
+        <div style="padding:13px 16px;background:var(--bl3);border:1px solid rgba(74,127,212,0.18);border-radius:var(--r);font-size:12px;color:var(--blue);line-height:1.7;">ZolVault is the first autonomous yield vault on LitVM LiteForge testnet — launched April 2026. We deployed the first DeFi contracts on LiteForge.</div>
+      </div>
+      <div style="margin-bottom:36px;" id="ls-ltc">
+        <h2 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:-.02em;">LTC and LitVM</h2>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;"><strong style="color:var(--txt)">Litecoin (LTC)</strong> — launched 2011, 13 years of uninterrupted operation, faster and cheaper than Bitcoin. Until now, only used for payments. LitVM changes that.</p>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;"><strong style="color:var(--txt)">LitVM</strong> — a Layer-2 built on top of Litecoin that adds smart contracts. Powered by Arbitrum Nitro, settles back to Litecoin L1 via zero-knowledge proofs. ZolVault's code runs on LitVM.</p>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;"><strong style="color:var(--txt)">zkLTC</strong> — LTC bridged to LitVM. Same value as LTC, but on LitVM. Used to pay gas fees and deposit into ZolVault.</p>
+      </div>
+      <div style="margin-bottom:36px;" id="ls-yield">
+        <h2 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:-.02em;">How yield works</h2>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;">Your deposited zkLTC goes into a <strong style="color:var(--txt)">ZolPool</strong> contract that generates yield. Yield = principal × APY × time elapsed. It's paid from a seeded reserve on testnet; on mainnet it comes from real trading fees.</p>
+        <h3 style="font-size:14px;font-weight:600;color:#fff;margin:16px 0 8px;">The compounding snowball</h3>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;">Every hour, the agent calls <code>compound()</code> on-chain. It collects all accrued interest, takes 2% as a dev fee, and adds the remaining 98% back to your position. Next hour, you earn on a slightly bigger balance — that snowball is compounding.</p>
+        <h3 style="font-size:14px;font-weight:600;color:#fff;margin:16px 0 8px;">Strategy rotation</h3>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;">Pool APYs change over time. The agent scans all pools and moves your money to the best one — but only if it's at least 3% better, to avoid unnecessary gas costs. All on-chain, real transactions.</p>
+      </div>
+      <div style="margin-bottom:36px;" id="ls-fees">
+        <h2 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:-.02em;">Fee breakdown</h2>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;">Say pools earn <strong style="color:var(--txt)">100 zkLTC</strong> of gross yield in one compound cycle:</p>
+        <div style="background:var(--bg3);border-radius:var(--r);padding:13px 16px;font:12px var(--m);line-height:2.4;margin-bottom:13px;">
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--b);"><span style="color:var(--mut)">Gross yield from pools</span><span>100.000 zkLTC</span></div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--b);"><span style="color:var(--amb)">Dev fee (2% of that yield)</span><span style="color:var(--amb)">−2.000 zkLTC</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--grn);font-weight:500">You keep (98%)</span><span style="color:var(--grn)">+98.000 zkLTC</span></div>
+        </div>
+        <div style="padding:13px 16px;background:rgba(45,212,160,0.05);border:1px solid rgba(45,212,160,0.13);border-radius:var(--r);font:12px var(--m);color:var(--grn);">Your deposit is never touched. Deposit 500 zkLTC → get back 500 zkLTC + 98% of all yield earned. The 500 is hardcoded in the contract and returned 1:1.</div>
+      </div>
+      <div style="margin-bottom:36px;" id="ls-safe">
+        <h2 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:-.02em;">Is it safe?</h2>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;">ZolVault is on <strong style="color:var(--txt)">testnet</strong>. The tokens are free test assets with zero real value. Get them from the faucet inside the Vault tab or at liteforge.hub.caldera.xyz.</p>
+        <h3 style="font-size:14px;font-weight:600;color:#fff;margin:16px 0 8px;">What the contract guarantees</h3>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;"><strong style="color:var(--txt)">Principal never touched:</strong> Your deposit is stored as a fixed number. Fee math only runs on yield. Impossible to deduct from your deposit.</p>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;margin-bottom:12px;"><strong style="color:var(--txt)">Emergency exit:</strong> Works even if the vault is paused. You can always get your funds out instantly.</p>
+        <p style="font-size:13px;color:var(--mut);line-height:1.75;"><strong style="color:var(--txt)">Non-custodial:</strong> The contract holds funds, not us. Your keys, your money.</p>
+        <div style="padding:13px 16px;background:rgba(240,192,96,0.05);border:1px solid rgba(240,192,96,0.13);border-radius:var(--r);font-size:12px;color:var(--amb);margin-top:13px;">Professional audit planned before mainnet. Do not deposit real money — testnet only.</div>
+      </div>
+      <div id="ls-faq">
+        <h2 style="font-size:20px;font-weight:600;color:#fff;margin-bottom:12px;letter-spacing:-.02em;">FAQ</h2>
+        <div style="border:1px solid var(--b);border-radius:var(--r);margin-bottom:8px;overflow:hidden;" class="faqitem">
+          <button style="width:100%;padding:13px 17px;background:var(--bg2);border:none;text-align:left;font:500 13px var(--f);color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="this.closest('.faqitem').classList.toggle('open')">
+            Why do I get two MetaMask prompts when depositing? <span style="color:var(--mut);transition:transform .2s;" class="fa2">›</span></button>
+          <div style="display:none;padding:0 17px 13px;font-size:12px;color:var(--mut);line-height:1.7;background:var(--bg2);" class="faq-a">First prompt: you're giving ZolVault permission to use your tokens (like giving someone a signed cheque). Second prompt: the actual deposit. Standard two-step safety in DeFi.</div>
+        </div>
+        <div style="border:1px solid var(--b);border-radius:var(--r);margin-bottom:8px;overflow:hidden;" class="faqitem">
+          <button style="width:100%;padding:13px 17px;background:var(--bg2);border:none;text-align:left;font:500 13px var(--f);color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="this.closest('.faqitem').classList.toggle('open')">
+            What's the difference between LTC and zkLTC? <span style="color:var(--mut);transition:transform .2s;" class="fa2">›</span></button>
+          <div style="display:none;padding:0 17px 13px;font-size:12px;color:var(--mut);line-height:1.7;background:var(--bg2);" class="faq-a">LTC is on the original Litecoin blockchain. zkLTC is LTC moved to the LitVM network — same value, different chain. ZolVault uses zkLTC because it runs on LitVM.</div>
+        </div>
+        <div style="border:1px solid var(--b);border-radius:var(--r);margin-bottom:8px;overflow:hidden;" class="faqitem">
+          <button style="width:100%;padding:13px 17px;background:var(--bg2);border:none;text-align:left;font:500 13px var(--f);color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="this.closest('.faqitem').classList.toggle('open')">
+            Can I lose my deposit? <span style="color:var(--mut);transition:transform .2s;" class="fa2">›</span></button>
+          <div style="display:none;padding:0 17px 13px;font-size:12px;color:var(--mut);line-height:1.7;background:var(--bg2);" class="faq-a">On testnet: tokens are worthless test assets. The contract guarantees principal returned 1:1. Smart contract bugs are always a theoretical risk in DeFi — that's why we audit before mainnet.</div>
+        </div>
+        <div style="border:1px solid var(--b);border-radius:var(--r);margin-bottom:8px;overflow:hidden;" class="faqitem">
+          <button style="width:100%;padding:13px 17px;background:var(--bg2);border:none;text-align:left;font:500 13px var(--f);color:#fff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px;" onclick="this.closest('.faqitem').classList.toggle('open')">
+            When does the developer earn? <span style="color:var(--mut);transition:transform .2s;" class="fa2">›</span></button>
+          <div style="display:none;padding:0 17px 13px;font-size:12px;color:var(--mut);line-height:1.7;background:var(--bg2);" class="faq-a">Every time compound() runs on-chain, the contract sends 2% of that cycle's gross yield to the developer wallet automatically. No manual claiming. More users = more compounds = more passive income.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+//  STEP 1: You (the developer) run "npm run deploy" once.
+//  STEP 2: Copy the addresses from addresses.json into this section.
+//  STEP 3: Drop index.html on Netlify. Users are live.
+// ─────────────────────────────────────────────────────────────────────────────
+const A = {
+  token: "0x187687b0D3e1FCf4Ba08EE027b9cAEba28eb587C",
+  vault: "0x41FC4FFbe7A7b4201F09Ee68Ec3aC6a18714A2aB",
+  pools: {
+    safe:   "0x22979bC85C1dD500b83B762D1D9b4c6F023a0FbA",
+    medium: "0xaFC9a3f7Dbc44D3fE2a25CC7333F712a2226068e",
+    high:   "0x1FBEe9d4590bD9AEfFC56Ea3Ccc5C007c7ad6Cf0",
+  },
+  chainId:  "0x1159",
+  rpc:      "https://liteforge.rpc.caldera.xyz",
+  explorer: "https://liteforge.explorer.caldera.xyz",
+};
+
+const DEPLOYED = A.token !== "";
+
+// Contract ABIs (minimum needed for UI)
+const VAULT_ABI = [
+  "function deposit(uint256 amount, uint8 risk) external",
+  "function withdraw() external",
+  "function claimYield() external",
+  "function emergencyExit() external",
+  "function compound() external",
+  "function rotateStrategy(uint8 risk, address pool) external",
+  "function getTVL() external view returns (uint256)",
+  "function totalCompounds() external view returns (uint256)",
+  "function devFeesEarned() external view returns (uint256)",
+  "function getUser(address u) external view returns (uint256 principal, uint256 yieldNet, uint256 yieldClaimed, uint8 risk, uint256 depositedAt, bool active)",
+  "function activePool(uint8 risk) external view returns (address)",
+  "function paused() external view returns (bool)",
+  "event Compounded(uint256 gross, uint256 devFee, uint256 netToUsers)",
+  "event Rotated(uint8 risk, address newPool)",
+];
+const TOKEN_ABI = [
+  "function balanceOf(address) external view returns (uint256)",
+  "function approve(address, uint256) external returns (bool)",
+  "function allowance(address, address) external view returns (uint256)",
+  "function faucet() external",
+  "function hasClaimed(address) external view returns (bool)",
+];
+const POOL_ABI = [
+  "function getApy() external view returns (uint256)",
+  "function balanceOf(address) external view returns (uint256)",
+];
+
+// Pool metadata
+const POOLS = [
+  { key: "safe",   name: "Safe Pool",   color: "#2dd4a0", tiers: [0,1,2], baseApy: 800  },
+  { key: "medium", name: "Medium Pool", color: "#f0c060", tiers: [1,2],   baseApy: 1500 },
+  { key: "high",   name: "High Pool",   color: "#f16b6b", tiers: [2],     baseApy: 3500 },
+];
+
+// App state
+const W = {
+  provider: null, signer: null, addr: null,
+  vault: null, token: null, pcontracts: [],
+  connected: false, walletBal: 0n,
+  risk: 0,
+  liveApys: [800, 1500, 3500],
+  activePools: { 0: 0, 1: 1, 2: 2 },
+  agentOn: false, agentTimer: null,
+  compounds: 0, rotations: 0,
+  uPrincipal: 0n, uGross: 0n, uDev: 0n, uNet: 0n,
+  page: "home",
+};
+
+const RDESC = [
+  "<strong>Safe</strong> — Safe Pool. Lowest APY (~8%), most stable. Best for steady gains without stress.",
+  "<strong>Medium</strong> — Medium Pool. Balanced risk and yield (~15% APY). Good for most users.",
+  "<strong>High</strong> — High Pool. Maximum APY (~35%), more volatile. Only if you understand the risk.",
+];
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goto(p) {
+  document.querySelectorAll(".page").forEach(x => x.classList.remove("on"));
+  document.getElementById("page-" + p).classList.add("on");
+  ["home","vault","pools","learn"].forEach(id => {
+    document.getElementById("nl-" + id)?.classList.toggle("on", id === p);
+    document.getElementById("dl-" + id)?.classList.toggle("on", id === p);
+  });
+  W.page = p;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (p === "home")  loadHomePools();
+  if (p === "vault") showVaultPage();
+  if (p === "pools") loadPoolsPage();
+}
+
+function toggleD() { document.getElementById("drawer").classList.toggle("open"); }
+function closeD()  { document.getElementById("drawer").classList.remove("open"); }
+function openModal()  { document.getElementById("ov").classList.add("open"); }
+function closeModal() { document.getElementById("ov").classList.remove("open"); }
+
+// ── Wallet connection ─────────────────────────────────────────────────────────
+async function connectWallet() {
+  closeModal();
+  if (!window.ethereum) {
+    toast("MetaMask not found — install from metamask.io", "err");
+    return;
+  }
+  try {
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    if (!accounts.length) return;
+
+    W.provider = new ethers.BrowserProvider(window.ethereum);
+    W.signer   = await W.provider.getSigner();
+    W.addr     = accounts[0];
+
+    // Switch to or add LiteForge network
+    try {
+      await window.ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: A.chainId }] });
+    } catch (e) {
+      if (e.code === 4902) {
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{ chainId: A.chainId, chainName: "LitVM LiteForge Testnet",
+            nativeCurrency: { name: "zkLTC", symbol: "zkLTC", decimals: 18 },
+            rpcUrls: [A.rpc], blockExplorerUrls: [A.explorer] }],
+        });
+      }
+    }
+
+    W.provider = new ethers.BrowserProvider(window.ethereum);
+    W.signer   = await W.provider.getSigner();
+
+    if (DEPLOYED) {
+      W.vault    = new ethers.Contract(A.vault, VAULT_ABI, W.signer);
+      W.token    = new ethers.Contract(A.token, TOKEN_ABI, W.signer);
+      W.pcontracts = [
+        A.pools.safe   ? new ethers.Contract(A.pools.safe,   POOL_ABI, W.provider) : null,
+        A.pools.medium ? new ethers.Contract(A.pools.medium, POOL_ABI, W.provider) : null,
+        A.pools.high   ? new ethers.Contract(A.pools.high,   POOL_ABI, W.provider) : null,
+      ];
+      W.walletBal = await W.token.balanceOf(W.addr);
+    }
+
+    W.connected = true;
+    const short = W.addr.slice(0,6) + "..." + W.addr.slice(-4);
+    const btn = document.getElementById("wbtn");
+    btn.textContent = short; btn.classList.add("ok");
+
+    alog("Wallet connected: " + W.addr, "info");
+    toast("Connected to LiteForge ✓", "ok");
+    await pullChain();
+    if (W.page === "vault") showVaultPage();
+
+    window.ethereum.on("accountsChanged", accs => accs.length ? location.reload() : location.reload());
+
+  } catch (e) {
+    toast("Connection failed: " + (e.message || "unknown error"), "err");
+    console.error(e);
+  }
+}
+
+// ── Read from chain ───────────────────────────────────────────────────────────
+async function pullChain() {
+  if (!W.provider) return;
+  try {
+    const [block, fee] = await Promise.all([
+      W.provider.getBlockNumber(),
+      W.provider.getFeeData(),
+    ]);
+    document.getElementById("nb-blk").textContent = block.toLocaleString();
+    if (fee.gasPrice) document.getElementById("nb-gas").textContent = ethers.formatUnits(fee.gasPrice,"gwei").slice(0,5) + " gwei";
+
+    if (W.vault) {
+      const [tvl, comps, dev] = await Promise.all([
+        W.vault.getTVL(), W.vault.totalCompounds(), W.vault.devFeesEarned()
+      ]);
+      document.getElementById("h-tvl").textContent  = f(tvl,  3);
+      document.getElementById("h-comp").textContent = comps.toString();
+      document.getElementById("h-dev").textContent  = f(dev,  4);
+    }
+  } catch (e) { console.warn("pullChain:", e.message); }
+}
+
+async function pullApys() {
+  for (let i = 0; i < W.pcontracts.length; i++) {
+    if (!W.pcontracts[i]) continue;
+    try { W.liveApys[i] = Number(await W.pcontracts[i].getApy()); } catch {}
+  }
+  const best = Math.max(...W.liveApys);
+  const bi   = W.liveApys.indexOf(best);
+  document.getElementById("h-apy").textContent   = (best / 100).toFixed(2) + "%";
+  document.getElementById("h-apy-n").textContent = POOLS[bi]?.name || "";
+  document.getElementById("apy0").textContent    = (W.liveApys[0]/100).toFixed(1) + "% APY";
+  document.getElementById("apy1").textContent    = (W.liveApys[1]/100).toFixed(1) + "% APY";
+  document.getElementById("apy2").textContent    = (W.liveApys[2]/100).toFixed(1) + "% APY";
+}
+
+async function pullUser() {
+  if (!W.vault || !W.addr) return;
+  try {
+    const u = await W.vault.getUser(W.addr);
+    W.uPrincipal = u.principal;
+    W.uNet       = u.yieldNet;
+    W.uGross     = u.yieldNet + u.yieldClaimed;
+    W.uDev       = W.uGross * 2n / 100n;
+    W.risk       = Number(u.risk);
+    if (W.token) { W.walletBal = await W.token.balanceOf(W.addr); }
+    document.getElementById("bh").textContent = "Balance: " + f(W.walletBal, 4) + " zkLTC";
+    renderUser();
+    updateYb();
+  } catch (e) { console.warn("pullUser:", e.message); }
+}
+
+// ── Vault page ────────────────────────────────────────────────────────────────
+function showVaultPage() {
+  const gate = document.getElementById("v-gate");
+  const ui   = document.getElementById("v-ui");
+  if (!W.connected) {
+    gate.style.display = "block"; ui.style.display = "none";
+  } else {
+    gate.style.display = "none"; ui.style.display = "block";
+    document.getElementById("v-addr").textContent = "Wallet: " + W.addr;
+    document.getElementById("bh").textContent     = "Balance: " + f(W.walletBal, 4) + " zkLTC";
+    pullUser(); pullApys();
+    checkFaucet();
+  }
+}
+
+async function checkFaucet() {
+  if (!W.token) return;
+  const btn = document.getElementById("faucet-btn");
+  try {
+    const already = await W.token.hasClaimed(W.addr);
+    if (already) { btn.textContent = "Already claimed ✓"; btn.disabled = true; }
+    else { btn.disabled = false; }
+  } catch {}
+}
+
+// ── Faucet ────────────────────────────────────────────────────────────────────
+async function claimFaucet() {
+  if (!W.token) { toast("Contract not deployed yet", "err"); return; }
+  const btn = document.getElementById("faucet-btn");
+  btn.disabled = true; btn.textContent = "Claiming...";
+  try {
+    alog("Calling faucet() on-chain...", "info");
+    const tx  = await W.token.faucet();
+    alog("Tx sent → " + A.explorer + "/tx/" + tx.hash, "info");
+    const rec = await tx.wait();
+    alog("Faucet claimed ✓  block " + rec.blockNumber, "ok");
+    toast("1000 zkLTC claimed to your wallet ✓", "ok");
+    btn.textContent = "Already claimed ✓";
+    W.walletBal = await W.token.balanceOf(W.addr);
+    document.getElementById("bh").textContent = "Balance: " + f(W.walletBal, 4) + " zkLTC";
+  } catch (e) {
+    const msg = e.reason || e.message;
+    toast(msg.includes("Already") ? "Already claimed — check wallet" : "Failed: " + msg, "err");
+    alog("Faucet error: " + msg, "err");
+    btn.disabled = false; btn.textContent = "Claim 1000 zkLTC";
+  }
+}
+
+// ── Risk ──────────────────────────────────────────────────────────────────────
+function pickRisk(r) {
+  W.risk = r;
+  [0,1,2].forEach(i => {
+    const el = document.getElementById("ro-" + i);
+    el.classList.remove("r0","r1","r2");
+  });
+  document.getElementById("ro-" + r).classList.add("r" + r);
+  document.getElementById("rd").innerHTML = RDESC[r];
+}
+
+function setMax() {
+  document.getElementById("dep-in").value = f(W.walletBal, 6);
+}
+
+// ── Deposit ───────────────────────────────────────────────────────────────────
+async function doDeposit() {
+  if (!W.connected) { openModal(); return; }
+  if (!W.vault)     { toast("Deploy contracts first — see README", "err"); return; }
+  const amtF = parseFloat(document.getElementById("dep-in").value);
+  if (!amtF || amtF < 0.001) { toast("Minimum deposit is 0.001 zkLTC", "err"); return; }
+  const amt = ethers.parseEther(amtF.toFixed(18).slice(0,22));
+  if (amt > W.walletBal) { toast("Not enough balance — claim from faucet", "err"); return; }
+
+  const btn = document.getElementById("dep-btn");
+  btn.disabled = true;
+
+  try {
+    btn.textContent = "Step 1/2 — Approving...";
+    const allowance = await W.token.allowance(W.addr, A.vault);
+    if (allowance < amt) {
+      alog("Approving token spend — confirm in MetaMask...", "info");
+      const tx1 = await W.token.approve(A.vault, amt);
+      alog("Approve tx → " + A.explorer + "/tx/" + tx1.hash, "info");
+      await tx1.wait();
+      alog("Approved ✓", "ok");
+    }
+
+    btn.textContent = "Step 2/2 — Depositing...";
+    alog("Depositing " + amtF.toFixed(4) + " zkLTC — confirm in MetaMask...", "info");
+    const tx2 = await W.vault.deposit(amt, W.risk);
+    alog("Deposit tx → " + A.explorer + "/tx/" + tx2.hash, "info");
+    const rec = await tx2.wait();
+    alog("Deposit confirmed! Block " + rec.blockNumber + " ✓", "ok");
+
+    toast("Deposited " + amtF.toFixed(4) + " zkLTC on-chain ✓", "ok");
+    document.getElementById("dep-in").value = "";
+    await pullUser(); await pullChain();
+    vtab("p");
+
+  } catch (e) {
+    toast("Failed: " + (e.reason || e.message), "err");
+    alog("Error: " + (e.reason || e.message), "err");
+  }
+
+  btn.disabled = false; btn.textContent = "Deposit zkLTC";
+}
+
+// ── Withdraw / Claim / Exit ───────────────────────────────────────────────────
+async function doWithdraw() {
+  if (!W.vault) return;
+  try {
+    toast("Sending withdraw — confirm in MetaMask...", "");
+    const tx = await W.vault.withdraw();
+    alog("Withdraw tx → " + A.explorer + "/tx/" + tx.hash, "info");
+    await tx.wait();
+    alog("Withdrawn ✓", "ok");
+    toast("Withdrawn — principal + yield returned ✓", "ok");
+    await pullUser(); await pullChain();
+  } catch (e) { toast("Failed: " + (e.reason || e.message), "err"); }
+}
+
+async function doClaim() {
+  if (!W.vault) return;
+  try {
+    const tx = await W.vault.claimYield();
+    alog("Claim tx → " + A.explorer + "/tx/" + tx.hash, "info");
+    await tx.wait();
+    alog("Yield claimed ✓", "ok");
+    toast("Yield claimed to your wallet ✓", "ok");
+    await pullUser();
+  } catch (e) { toast("Failed: " + (e.reason || e.message), "err"); }
+}
+
+async function doExit() {
+  if (!W.vault) return;
+  try {
+    const tx = await W.vault.emergencyExit();
+    alog("Emergency exit tx → " + A.explorer + "/tx/" + tx.hash, "info");
+    await tx.wait();
+    alog("Emergency exit confirmed ✓", "ok");
+    toast("Emergency exit complete ✓", "ok");
+    await pullUser(); await pullChain();
+  } catch (e) { toast("Failed: " + (e.reason || e.message), "err"); }
+}
+
+// ── Agent ─────────────────────────────────────────────────────────────────────
+function toggleAgent() {
+  if (!W.connected) { openModal(); return; }
+  if (!W.vault) { toast("Deploy contracts first", "err"); return; }
+  W.agentOn = !W.agentOn;
+  const btn = document.getElementById("ag-btn");
+  const dot = document.getElementById("ag-dot");
+  if (W.agentOn) {
+    btn.textContent = "Stop agent"; btn.classList.add("stop"); dot.classList.add("on");
+    document.getElementById("ag-n").textContent = "Agent running";
+    document.getElementById("ag-s").textContent = "Compounding on-chain every 60s";
+    alog("Agent started", "info");
+    agentTick();
+    W.agentTimer = setInterval(agentTick, 60000);
+  } else {
+    clearInterval(W.agentTimer);
+    btn.textContent = "Start agent"; btn.classList.remove("stop"); dot.classList.remove("on");
+    document.getElementById("ag-n").textContent = "Agent idle";
+    document.getElementById("ag-s").textContent = "Start to begin compounding";
+    alog("Agent paused", "");
+  }
+}
+
+async function agentTick() {
+  await pullApys();
+
+  // Check rotations for user's risk tier
+  const eligible = POOLS
+    .map((p, i) => ({ ...p, apy: W.liveApys[i], idx: i }))
+    .filter(p => p.tiers.includes(W.risk) && A.pools[p.key])
+    .sort((a, b) => b.apy - a.apy);
+
+  const best    = eligible[0];
+  const curPool = W.activePools[W.risk];
+  const curApy  = W.liveApys[curPool];
+
+  if (best && best.idx !== curPool && best.apy > curApy + 300) {
+    alog("Rotating to " + best.name + " (+" + ((best.apy - curApy)/100).toFixed(1) + "%) — confirm in MetaMask...", "info");
+    try {
+      const tx = await W.vault.rotateStrategy(W.risk, A.pools[best.key]);
+      alog("Rotate tx → " + A.explorer + "/tx/" + tx.hash, "info");
+      await tx.wait();
+      W.activePools[W.risk] = best.idx;
+      W.rotations++;
+      document.getElementById("ag-r").textContent = W.rotations;
+      alog("Rotation confirmed ✓", "ok");
+    } catch (e) { alog("Rotate failed: " + (e.reason || e.message), "warn"); }
+  }
+
+  // Call compound()
+  try {
+    const [paused, tvl] = await Promise.all([W.vault.paused(), W.vault.getTVL()]);
+    if (!paused && tvl > 0n) {
+      alog("Calling compound() — confirm in MetaMask...", "info");
+      const tx = await W.vault.compound();
+      alog("compound() tx → " + A.explorer + "/tx/" + tx.hash, "info");
+      const rec = await tx.wait();
+      W.compounds++;
+      document.getElementById("ag-c").textContent = W.compounds;
+      alog("Compound #" + W.compounds + " confirmed block " + rec.blockNumber + " ✓", "ok");
+      await pullUser(); await pullChain();
+    } else if (!paused) {
+      alog("No deposits in vault yet", "");
+    }
+  } catch (e) { alog("compound() error: " + (e.reason || e.message), "warn"); }
+
+  // Update UI
+  const bestI = W.liveApys.indexOf(Math.max(...W.liveApys));
+  document.getElementById("ag-bp").textContent = POOLS[bestI]?.name || "—";
+  document.getElementById("ag-y").textContent  = f(W.uNet, 6);
+  if (W.page === "pools") loadPoolsPage();
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function vtab(t) {
+  document.getElementById("vp-d").style.display = t === "d" ? "block" : "none";
+  document.getElementById("vp-p").style.display = t === "p" ? "block" : "none";
+  document.getElementById("vt-d").classList.toggle("on", t === "d");
+  document.getElementById("vt-p").classList.toggle("on", t === "p");
+}
+
+function renderUser() {
+  const has = W.uPrincipal > 0n;
+  document.getElementById("pbadge").textContent  = has ? "1" : "0";
+  document.getElementById("pos-hd").textContent  = has ? "1 active" : "none";
+  document.getElementById("v-total").textContent = f(W.uPrincipal + W.uNet, 4) + " zkLTC";
+  document.getElementById("v-earned").textContent = "+" + f(W.uNet, 6) + " earned";
+
+  const body = document.getElementById("pos-body");
+  if (!has) {
+    body.innerHTML = `<div class="empty"><div class="empty-i">💤</div><div class="empty-t">No position yet</div><div class="empty-s">Deposit zkLTC on the Deposit tab. Your live on-chain position with real transaction links appears here.</div></div>`;
+    return;
+  }
+
+  const rc = ["p0","p1","p2"];
+  const rn = ["Safe","Medium","High"];
+  const poolName = POOLS[W.activePools[W.risk]]?.name || "—";
+  body.innerHTML = `
+    <div class="pos">
+      <div class="pos-top">
+        <div>
+          <div class="pos-amt">${f(W.uPrincipal,4)} <span style="font-size:11px;color:var(--mut)">zkLTC</span></div>
+          <div class="pos-meta">on-chain · <a href="${A.explorer}/address/${A.vault}" target="_blank" class="txl">view contract ↗</a></div>
+        </div>
+        <span class="pill2 ${rc[W.risk]}">${rn[W.risk]}</span>
+      </div>
+      <div class="pos-g">
+        <div class="pst"><div class="psl">Net yield</div><div class="psv" style="color:var(--grn)">+${f(W.uNet,7)}</div></div>
+        <div class="pst"><div class="psl">Active pool</div><div class="psv" style="font-size:10px;color:var(--blue)">${poolName}</div></div>
+      </div>
+      <div class="bd">
+        <div class="br"><span style="color:var(--mut)">Gross yield (pools earned)</span><span>${f(W.uGross,8)} zkLTC</span></div>
+        <div class="br"><span style="color:var(--amb)">Dev fee (2% of yield profit)</span><span style="color:var(--amb)">−${f(W.uDev,8)}</span></div>
+        <div class="br"><span style="color:var(--grn)">Your net yield (98%)</span><span style="color:var(--grn)">+${f(W.uNet,8)}</span></div>
+      </div>
+      <div class="pbs">
+        <button class="pb g" onclick="doClaim()">Claim yield</button>
+        <button class="pb"   onclick="doWithdraw()">Withdraw all</button>
+        <button class="pb r" onclick="doExit()">Emergency exit</button>
+      </div>
+    </div>`;
+}
+
+function updateYb() {
+  document.getElementById("yb-p").textContent = f(W.uPrincipal, 4);
+  document.getElementById("yb-g").textContent = f(W.uGross, 7);
+  document.getElementById("yb-d").textContent = "−" + f(W.uDev, 7);
+  document.getElementById("yb-n").textContent = "+" + f(W.uNet, 7);
+  document.getElementById("yb-t").textContent = f(W.uPrincipal + W.uNet, 4);
+}
+
+async function loadHomePools() {
+  await pullApys();
+  const sorted = POOLS.map((p,i) => ({ ...p, apy: W.liveApys[i] })).sort((a,b) => b.apy - a.apy);
+  const ac = a => a >= 3000 ? "hi" : a >= 1200 ? "mi" : "lo";
+  document.getElementById("home-pools").innerHTML = sorted.map((p,i) => `
+    <div class="pr">
+      <div class="pdot" style="background:${p.color}"></div>
+      <div class="pi">
+        <div class="pn">${p.name} ${i===0 ? '<span class="atag">highest APY</span>' : ''}</div>
+        <div class="pp">ZolVault Pool · LiteForge Testnet ${A.pools[p.key] ? `· <a href="${A.explorer}/address/${A.pools[p.key]}" target="_blank" class="txl">${A.pools[p.key].slice(0,10)}... ↗</a>` : ''}</div>
+        <div class="pt">${p.tiers.map(t => `<span class="pill2 p${t}">${["Safe","Medium","High"][t]}</span>`).join("")}</div>
+      </div>
+      <div class="papy ${ac(p.apy)}">${(p.apy/100).toFixed(2)}%</div>
+    </div>`).join("");
+}
+
+async function loadPoolsPage() {
+  await pullApys();
+  const sorted = POOLS.map((p,i) => ({ ...p, apy: W.liveApys[i] })).sort((a,b) => b.apy - a.apy);
+  const ac = a => a >= 3000 ? "hi" : a >= 1200 ? "mi" : "lo";
+  const isAct = key => Object.values(W.activePools).some(i => POOLS[i]?.key === key);
+
+  document.getElementById("pool-table").innerHTML = sorted.map(p => `
+    <div class="pr">
+      <div class="pdot" style="background:${p.color}"></div>
+      <div class="pi">
+        <div class="pn">${p.name} ${isAct(p.key) ? '<span class="atag">agent active</span>' : ''}</div>
+        <div class="pp">ZolVault Pool · LiteForge ${A.pools[p.key] ? `· <a href="${A.explorer}/address/${A.pools[p.key]}" target="_blank" class="txl">${A.pools[p.key].slice(0,10)}... ↗</a>` : ''}</div>
+        <div class="pt">${p.tiers.map(t => `<span class="pill2 p${t}">${["Safe","Medium","High"][t]}</span>`).join("")}</div>
+      </div>
+      <div class="papy ${ac(p.apy)}">${(p.apy/100).toFixed(2)}%</div>
+    </div>`).join("");
+
+  document.getElementById("pools-ts").textContent = "Updated " + new Date().toLocaleTimeString();
+  document.getElementById("active-tiers").innerHTML = [0,1,2].map(t => {
+    const p = POOLS[W.activePools[t]];
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--b);font-size:12px;">
+      <div><div style="font-weight:600;color:#fff;margin-bottom:2px;">${["Safe","Medium","High"][t]}</div>
+      <div style="font:10px var(--m);color:var(--mut)">${p?.name || "—"}</div></div>
+      <div style="font:600 15px var(--m);color:var(--grn)">${(W.liveApys[W.activePools[t]]/100).toFixed(1)}%</div>
+    </div>`;
+  }).join("") + `<div style="font:11px var(--m);color:var(--mut);padding-top:9px;">Agent rotates when a pool is 3%+ better.</div>`;
+}
+
+function lscroll(id, btn) {
+  document.querySelectorAll("#lnav .nl").forEach(b => b.classList.remove("on"));
+  btn.classList.add("on");
+  document.getElementById("ls-" + id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// FAQ toggle
+document.querySelectorAll(".faqitem").forEach(item => {
+  item.querySelector("button").addEventListener("click", () => {
+    const a = item.querySelector(".faq-a");
+    const arr = item.querySelector(".fa2");
+    const open = a.style.display === "block";
+    a.style.display = open ? "none" : "block";
+    arr.style.transform = open ? "" : "rotate(180deg)";
+  });
+});
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function f(val, dp) { return parseFloat(ethers.formatUnits(val, 18)).toFixed(dp); }
+
+function alog(msg, cls = "") {
+  const box = document.getElementById("logbox");
+  const el  = document.createElement("div");
+  el.className   = "ll " + cls;
+  el.textContent = "[" + new Date().toLocaleTimeString("en-US",{hour12:false}) + "] " + msg;
+  box.appendChild(el); box.scrollTop = box.scrollHeight;
+  if (box.children.length > 120) box.removeChild(box.firstChild);
+}
+
+function toast(msg, type = "") {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.className = "toast show " + type;
+  setTimeout(() => el.className = "toast", 3500);
+}
+
+// ── Auto-refresh every 15s ────────────────────────────────────────────────────
+setInterval(async () => {
+  await pullChain();
+  await pullApys();
+  if (W.page === "home")  loadHomePools();
+  if (W.page === "pools") loadPoolsPage();
+  if (W.connected && W.page === "vault") await pullUser();
+}, 15000);
+
+// ── Startup — read public data without needing wallet ─────────────────────────
+(async () => {
+  try {
+    const rp = new ethers.JsonRpcProvider(A.rpc);
+    const [block, fee] = await Promise.all([rp.getBlockNumber(), rp.getFeeData()]);
+    document.getElementById("nb-blk").textContent = block.toLocaleString();
+    if (fee.gasPrice) document.getElementById("nb-gas").textContent = ethers.formatUnits(fee.gasPrice,"gwei").slice(0,5) + " gwei";
+
+    if (DEPLOYED) {
+      const v = new ethers.Contract(A.vault, VAULT_ABI, rp);
+      const [tvl, comps, dev] = await Promise.all([v.getTVL(), v.totalCompounds(), v.devFeesEarned()]);
+      document.getElementById("h-tvl").textContent  = f(tvl, 3);
+      document.getElementById("h-comp").textContent = comps.toString();
+      document.getElementById("h-dev").textContent  = f(dev, 4);
+      W.pcontracts = [
+        A.pools.safe   ? new ethers.Contract(A.pools.safe,   POOL_ABI, rp) : null,
+        A.pools.medium ? new ethers.Contract(A.pools.medium, POOL_ABI, rp) : null,
+        A.pools.high   ? new ethers.Contract(A.pools.high,   POOL_ABI, rp) : null,
+      ];
+    }
+  } catch (e) { console.warn("Startup:", e.message); }
+  loadHomePools();
+})();
+</script>
+</body>
+</html>
