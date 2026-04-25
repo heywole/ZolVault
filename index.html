@@ -1203,38 +1203,18 @@ function toast(msg, type = "") {
   setTimeout(() => el.className = "toast", 3500);
 }
 
-// ── Auto-refresh every 15s ────────────────────────────────────────────────────
+// ── Auto-refresh every 15s (only when wallet connected) ──────────────────────
 setInterval(async () => {
+  if (!W.connected) return;
   await pullChain();
   await pullApys();
   if (W.page === "home")  loadHomePools();
   if (W.page === "pools") loadPoolsPage();
-  if (W.connected && W.page === "vault") await pullUser();
+  if (W.page === "vault") await pullUser();
 }, 15000);
 
-// ── Startup — read public data without needing wallet ─────────────────────────
-(async () => {
-  try {
-    const rp = new ethers.JsonRpcProvider(A.rpc);
-    const [block, fee] = await Promise.all([rp.getBlockNumber(), rp.getFeeData()]);
-    document.getElementById("nb-blk").textContent = block.toLocaleString();
-    if (fee.gasPrice) document.getElementById("nb-gas").textContent = ethers.formatUnits(fee.gasPrice,"gwei").slice(0,5) + " gwei";
-
-    if (DEPLOYED) {
-      const v = new ethers.Contract(A.vault, VAULT_ABI, rp);
-      const [tvl, comps, dev] = await Promise.all([v.getTVL(), v.totalCompounds(), v.devFeesEarned()]);
-      document.getElementById("h-tvl").textContent  = f(tvl, 3);
-      document.getElementById("h-comp").textContent = comps.toString();
-      document.getElementById("h-dev").textContent  = f(dev, 4);
-      W.pcontracts = [
-        A.pools.safe   ? new ethers.Contract(A.pools.safe,   POOL_ABI, rp) : null,
-        A.pools.medium ? new ethers.Contract(A.pools.medium, POOL_ABI, rp) : null,
-        A.pools.high   ? new ethers.Contract(A.pools.high,   POOL_ABI, rp) : null,
-      ];
-    }
-  } catch (e) { console.warn("Startup:", e.message); }
-  loadHomePools();
-})();
+// ── Startup — pool display only, chain reads happen after wallet connects ────
+loadHomePools();
 </script>
 </body>
 </html>
