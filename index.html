@@ -771,13 +771,6 @@ async function connectWallet() {
     W.provider = new ethers.BrowserProvider(window.ethereum);
     W.signer   = await W.provider.getSigner();
 
-    // Verify we are on LiteForge before calling contracts
-    const network = await W.provider.getNetwork();
-    if (network.chainId !== 4441n) {
-      toast("Please switch to LitVM LiteForge network in your wallet", "err");
-      return;
-    }
-
     if (DEPLOYED) {
       W.vault    = new ethers.Contract(A.vault, VAULT_ABI, W.signer);
       W.token    = new ethers.Contract(A.token, TOKEN_ABI, W.signer);
