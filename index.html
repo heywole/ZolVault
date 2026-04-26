@@ -654,7 +654,7 @@ const A = {
     high:   "0x1FBEe9d4590bD9AEfFC56Ea3Ccc5C007c7ad6Cf0",
   },
   chainId:  "0x1159",
-  rpc:      "https://liteforge.rpc.caldera.xyz",
+  rpc:      "https://liteforge.rpc.caldera.xyz/http",
   explorer: "https://liteforge.explorer.caldera.xyz",
 };
 
@@ -765,8 +765,18 @@ async function connectWallet() {
       }
     }
 
+    // Wait for network switch to settle
+    await new Promise(r => setTimeout(r, 1000));
+
     W.provider = new ethers.BrowserProvider(window.ethereum);
     W.signer   = await W.provider.getSigner();
+
+    // Verify we are on LiteForge before calling contracts
+    const network = await W.provider.getNetwork();
+    if (network.chainId !== 4441n) {
+      toast("Please switch to LitVM LiteForge network in your wallet", "err");
+      return;
+    }
 
     if (DEPLOYED) {
       W.vault    = new ethers.Contract(A.vault, VAULT_ABI, W.signer);
@@ -776,7 +786,12 @@ async function connectWallet() {
         A.pools.medium ? new ethers.Contract(A.pools.medium, POOL_ABI, W.provider) : null,
         A.pools.high   ? new ethers.Contract(A.pools.high,   POOL_ABI, W.provider) : null,
       ];
-      W.walletBal = await W.token.balanceOf(W.addr);
+      try {
+        W.walletBal = await W.token.balanceOf(W.addr);
+      } catch (e) {
+        console.warn("balanceOf failed:", e.message);
+        W.walletBal = 0n;
+      }
     }
 
     W.connected = true;
